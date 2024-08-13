@@ -1,0 +1,56 @@
+from flask import Flask, jsonify, request
+import mysql.connector
+
+app = Flask(__name__)
+
+# MySQL database connection
+db = mysql.connector.connect(
+    host="localhost",
+    port=3306,
+    user="root",       
+    password="Laalaa@05",   
+    database="student_db"
+)
+
+cursor = db.cursor(dictionary=True)
+
+@app.route('/student/<int:student_id>', methods=['GET'])
+def get_student(student_id):
+    cursor.execute("SELECT * FROM students WHERE id = %s", (student_id,))
+    student = cursor.fetchone()
+    if student:
+        return jsonify(student)
+    else:
+        return jsonify({'error': 'Student not found'}), 404
+
+@app.route('/students', methods=['POST'])
+def add_students():
+    new_students = request.get_json()  
+    for student in new_students:
+        cursor.execute("INSERT INTO students (id, name, age, major) VALUES (%s, %s, %s, %s)",
+                       (student['id'], student['name'], student['age'], student['major']))
+    db.commit()
+    return jsonify({'message': 'Students added successfully', 'students': new_students}), 201
+
+@app.route('/student/<int:student_id>', methods=['PUT'])
+def update_student(student_id):
+    updated_data = request.get_json()
+    cursor.execute("UPDATE students SET name = %s, age = %s, major = %s WHERE id = %s",
+                   (updated_data['name'], updated_data['age'], updated_data['major'], student_id))
+    db.commit()
+    if cursor.rowcount > 0:
+        return jsonify({'message': 'Student updated successfully'})
+    else:
+        return jsonify({'error': 'Student not found'}), 404
+
+@app.route('/student/<int:student_id>', methods=['DELETE'])
+def delete_student(student_id):
+    cursor.execute("DELETE FROM students WHERE id = %s", (student_id,))
+    db.commit()
+    if cursor.rowcount > 0:
+        return jsonify({'message': 'Student deleted successfully'})
+    else:
+        return jsonify({'error': 'Student not found'}), 404
+
+if __name__ == '__main__':
+    app.run(debug=True)
